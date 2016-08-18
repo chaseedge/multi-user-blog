@@ -83,8 +83,9 @@ class Blog(db.Model):
     subject = db.StringProperty(required = True)
     content = db.TextProperty(required = True)
     author = db.StringProperty(required = True)
-    likes = db.IntegerProperty(default=0)
     created = db.DateTimeProperty(auto_now_add = True)
+    likes = db.IntegerProperty(default=0)
+    
 
     # Keeps the white space formatting
     def render(self):
@@ -268,19 +269,31 @@ class PostPage(Handler):
     def post(self, post_id):
         key = db.Key.from_path('Blog', int(post_id), parent=blog_key())
         post = db.get(key)
-        author = get_user_id(self)
+        user_id = get_user_id(self)
         content = self.request.get('content')
+        comments = Comment.gql('WHERE blog_id = :1 ORDER BY created ASC', post_id)
         likes = self.request.get('like')
-        if likes:
-            post.likes = int(likes) + post.likes
-            post.put()
-        if content and author:
-            c = Comment(parent = comment_key(), blog_id = post_id, author = author, content = content, likes = likes    )
-            c.put()
-            comments = Comment.gql('WHERE blog_id = :1 ORDER BY created ASC', key)
-            self.render('permalink.html', post = post, user_id = author, comments = comments)
+
+        if user_id:
+            if likes:
+                post.likes = int(likes) + post.likes
+                post.put()
+                self.render('permalink.html', post = post, user_id = user_id, comments = comments)
+            
+        # to add comments
+            elif content:
+                c = Comment(parent = comment_key(), blog_id = post_id, author = user_id, content = content)
+                c.put()
+                comments = Comment.gql('WHERE blog_id = :1 ORDER BY created ASC', post_id)
+                self.render('permalink.html', post = post, user_id = user_id, comments = comments)
+        
+        # if post happens without a like or a comment, then it means comment was left blank
+            else:
+                error = "Error - Comment Blank"
+                self.render('permalink.html', post = post, user_id = user_id, comments = comments, error = error)
+        
         else:
-            login_error = "Please login to comment"
+            login_error = "Please login first"
             self.render('login.html', login_error = login_error)
         
         

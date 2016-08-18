@@ -111,8 +111,8 @@ input[type=submit] {
 
 .post-date {
     position: absolute;
-    right: 0px;
-    bottom: 0px;
+    right: 10px;
+    padding-top: 12px;
     color: #999;
 
 }
@@ -140,10 +140,13 @@ input[type=submit] {
     color: #999;
 }
 
-
 .comment-new {
   height: 100px;
   width: 100%;
   font-family: monospace;
+ }
+
+ .comment-error {
+     padding-top: 10px;
  }
 
