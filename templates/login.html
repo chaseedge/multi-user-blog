@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Login</h2>
+        <script>
+        {% if wrong_id %}
+            alert("Only {{username | upper}} can change this post")
+        {% elif login_error %}
+            alert("{{login_error}}")
+        {% endif %}        
+        </script>
+
+    <form method="post">
+        <table>
+            <tr>
+                <td class="label">Username</td>
+                <td><input type="text" name="username" value="{{username}}"></td>
+            </tr>
+            <tr>
+                <td class="label">Password</td>
+                <td><input type="password" name="password" value=""></td>
+            </tr>
+        </table>
+
+        <div class="error">{{error}}</div>
+
+        <input type="submit">
+    </form>
+{% endblock %}

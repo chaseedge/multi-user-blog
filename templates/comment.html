@@ -1,0 +1,4 @@
+<div class="comment">
+    <div class="comment-author">by {{comment.author | upper }} on {{comment.created.strftime("%b %d, %Y %I:%M%p")}}</div>
+    <div class="comment-content">{{comment.content | safe}}</div>
+</div>

@@ -1,0 +1,23 @@
+<div class="post">
+
+  <div class="post-header">
+    <a class="post-title" href="/blog/{{p.key().id()}}">{{p.subject}}</a>
+    <span class="post-author"> - {{p.author | upper}} </span>
+    <span class="like-count">Likes {{p.likes}}</span>
+
+    <form class="likes" method="post">
+      <input type="text" hidden='true' name='post_id' value={{p.key().id()}}>
+      <button name="like" type="submit" value=1><i class="fa fa-thumbs-up fa-md" aria-hidden="true"></i></button>
+      <button name="like" type="submit" value=-1><i class="fa fa-thumbs-down fa-md" aria-hidden="true"></i></button>
+    </form>
+    
+    <a class="post-edit" href="/blog/{{p.key().id()}}/edit">edit </a>  
+    <a class="post-delete" href="/blog/{{p.key().id()}}/delete">delete </a>    
+    <span class="post-date">{{p.created.strftime("%b %d, %Y %I:%M%p")}}</span>
+  </div>
+
+  <div class="post-content">
+    {{p._render_text | safe}}
+  </div>
+
+</div>
