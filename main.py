@@ -6,6 +6,7 @@ import random
 import webapp2
 import jinja2
 import hmac
+import time
 
 from google.appengine.ext import db
 
@@ -88,9 +89,9 @@ class Blog(db.Model):
     
 
     # Keeps the white space formatting
-    def render(self):
+    def render(self, template, user_id):
         self._render_text = self.content.replace('\n', '<br>')
-        return render_str('post.html', p = self)
+        return render_str(template, post = self, user_id = user_id)
 
 def comment_key(name = 'default'):
     return db.Key.from_path('comments', name)
@@ -103,14 +104,14 @@ class Comment(db.Model):
     created = db.DateTimeProperty(auto_now_add = True)
 
     @classmethod
-    def by_blog(cls, blog_id):
-        c = cls.all().filter('blog_id =', blog_id).get()
+    def by_blog(cls, name):
+        c = cls.all().filter('blog_id =', str(name)).order('created')
         return c
 
     # Keeps the white space formatting
-    def render(self):
+    def render(self, template, user_id):
         self._render_text = self.content.replace('\n', '<br>')
-        return render_str('comment.html', comment = self)
+        return render_str(template, comment = self, user_id = user_id)
 
 
 
@@ -195,9 +196,7 @@ class SignupHandler(Handler):
 
 class LoginHandler(Handler):
     def get(self):
-        username = self.request.get('username')
-        wrong_id = self.request.get('wrong_id')
-        self.render('login.html', username = username, wrong_id = wrong_id)
+        self.render('login.html')
     
     def post(self):
         error = ''
@@ -254,12 +253,15 @@ class PostPage(Handler):
     def get(self, post_id):
         key = db.Key.from_path('Blog', int(post_id), parent=blog_key())
         post = db.get(key)
-        user_id = get_user_id(self)
-        comments = Comment.gql('WHERE blog_id = :1 ORDER BY created ASC', post_id)
         
         if not post:
             self.error(404)
             return
+
+        blog_id = post.key().id()
+        user_id = get_user_id(self)
+        comments = Comment.by_blog(blog_id)
+
         
         if comments:
             self.render('permalink.html', post = post, user_id = user_id, comments = comments)
@@ -269,9 +271,10 @@ class PostPage(Handler):
     def post(self, post_id):
         key = db.Key.from_path('Blog', int(post_id), parent=blog_key())
         post = db.get(key)
+        blog_id = post.key().id()
         user_id = get_user_id(self)
         content = self.request.get('content')
-        comments = Comment.gql('WHERE blog_id = :1 ORDER BY created ASC', post_id)
+        comments = Comment.by_blog(blog_id)
         likes = self.request.get('like')
 
         if user_id:
@@ -284,7 +287,8 @@ class PostPage(Handler):
             elif content:
                 c = Comment(parent = comment_key(), blog_id = post_id, author = user_id, content = content)
                 c.put()
-                comments = Comment.gql('WHERE blog_id = :1 ORDER BY created ASC', post_id)
+                time.sleep(0.5)
+                comments = Comment.by_blog(blog_id)
                 self.render('permalink.html', post = post, user_id = user_id, comments = comments)
         
         # if post happens without a like or a comment, then it means comment was left blank
@@ -293,8 +297,8 @@ class PostPage(Handler):
                 self.render('permalink.html', post = post, user_id = user_id, comments = comments, error = error)
         
         else:
-            login_error = "Please login first"
-            self.render('login.html', login_error = login_error)
+            error = "Please login first"
+            self.render('login.html', error = error)
         
         
 
@@ -309,8 +313,8 @@ class EditPost(Handler):
         if post.author == user_id:
             self.render('editpost.html', post = post, user_id = user_id)
         else:
-            error = True
-            self.redirect('/login?username=%s&wrong_id=%s' % (post.author, error))
+            error = 'Only %s can make changes to this post' % post.author
+            self.render('login.html', error = error, username = post.author )
 
     def post(self, post_id):
         key = db.Key.from_path('Blog', int(post_id), parent=blog_key())
@@ -321,6 +325,7 @@ class EditPost(Handler):
             post.subject = subject
             post.content = content
             post.put()
+            time.sleep(0.25)
             self.redirect('/')
         else:
             error = 'Both a subject and content is required'
@@ -347,8 +352,50 @@ class DeletePost(Handler):
         delete = self.request.get('delete')
         if post.author == user_id and delete:
             post.delete()
+            time.sleep(0.25)
         self.redirect('/')
 
+class CommentDelete(Handler):
+    def get(self, comment_id):
+        user_id = get_user_id(self)
+        key = db.Key.from_path('Comment', int(comment_id), parent=comment_key())
+        comment = db.get(key)
+        blog_id = comment.blog_id
+
+        if user_id == comment.author:
+            comment.delete()
+            time.sleep(0.25)
+        self.redirect('/blog/%s' % blog_id)
+
+class CommentEdit(Handler):
+    def get(self, comment_id):
+        user_id = get_user_id(self)
+        key = db.Key.from_path('Comment', int(comment_id), parent=comment_key())
+        comment = db.get(key)
+        blog_id = comment.blog_id
+        key = db.Key.from_path('Blog', int(blog_id), parent=blog_key())
+        post = db.get(key)
+        comments = Comment.by_blog(blog_id)
+
+        if user_id == comment.author:
+            self.render('permalink.html', post = post, user_id = user_id, content = comment.content, comment_id = comment.key().id(), comments = comments)
+            time.sleep(0.25)
+        else:
+            self.redirect('/blog/%s' % blog_id)
+    
+    def post(self, comment_id):
+        user_id = get_user_id(self)
+        key = db.Key.from_path('Comment', int(comment_id), parent=comment_key())
+        comment = db.get(key)
+        content = self.request.get("content")
+
+        if user_id == comment.author and content:
+            comment.content = content
+            comment.put()
+            time.sleep(0.25)
+        self.redirect('/blog/%s' % comment.blog_id)
+
+        # self.redirect('/blog/%s' % blog_id)
 
 # Home page which shows all blogs
 class HomePageHandler(Handler):
@@ -386,4 +433,6 @@ app = webapp2.WSGIApplication([
     ('/blog/([0-9]+)', PostPage),
     ('/blog/([0-9]+)/edit', EditPost),
     ('/blog/([0-9]+)/delete', DeletePost),
+    ('/comment/([0-9]+)/delete', CommentDelete),
+    ('/comment/([0-9]+)/edit', CommentEdit)
 ], debug=True)

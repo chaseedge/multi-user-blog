@@ -2,22 +2,27 @@
 
 {% block content %}
 
-    {{post.render() | safe}}
+    {{post.render("post.html", user_id) | safe}}
     
     <h3>Comments</h3>
     
     {% if comments %}
         {% for comment in comments %}
-            {{comment.render() | safe}}
             <hr>
+            {{comment.render("comment.html", user_id) | safe}}
         {% endfor %}
     {% endif %}
-    <div>
-        <form method="POST">
-            <textarea  class="comment-new" name="content"></textarea>
-            <div class="error comment-error">{{error}}</div>
-            <br>
-            <input type="submit">
-        </form>
-    </div>
+    
+    {% if user_id %}
+        <div>
+            <h3>New Comment</h3>
+            <form method="POST">
+                <input type="hidden" name="comment_id" value="{{comment_id}}">
+                <textarea  class="comment-new" name="content">{{content}}</textarea>
+                <div class="error comment-error">{{error}}</div>
+                <br>
+                <input type="submit">
+            </form>
+        </div>
+    {% endif %}
 {% endblock %}
