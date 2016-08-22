@@ -260,11 +260,14 @@ class NewPostHandler(Handler):
             self.render('newpost.html', user_id=user_id)
 
     def post(self):
+        user_id = get_user_id(self)
         subject = self.request.get('subject')
         content = self.request.get('content')
         author = get_user_id(self)
 
-        if subject and content:
+        if not user_id:
+            self.redirect('/login')
+        elif subject and content:
             b = Blog(
                 parent=blog_key(),
                 subject=subject,
@@ -311,7 +314,7 @@ class PostPage(Handler):
         liked = post.liked
 
         if user_id:
-            if likes and not (user_id in liked):
+            if likes and not (user_id in liked) and user_id != post.author:
                 post.like_count = int(likes) + post.like_count
                 post.liked.append(user_id)
                 post.put()
@@ -370,11 +373,15 @@ class EditPost(Handler):
             self.render('login.html', error=error, username=post.author)
 
     def post(self, post_id):
+        user_id = get_user_id(self)
         key = db.Key.from_path('Blog', int(post_id), parent=blog_key())
         post = db.get(key)
         subject = self.request.get('subject')
         content = self.request.get('content')
-        if subject and content:
+
+        if not user_id:
+            self.redirect('/login')
+        elif subject and content:
             post.subject = subject
             post.content = content
             post.put()
@@ -398,29 +405,29 @@ class DeletePost(Handler):
         if post.author == user_id:
             self.render('delete.html', post=post, user_id=user_id)
         else:
-            error = True
             self.redirect(
                 '/login?username=%s&wrong_id=%s' %
-                (post.author, error))
+                (post.author))
 
     def post(self, post_id):
         key = db.Key.from_path('Blog', int(post_id), parent=blog_key())
         post = db.get(key)
         user_id = get_user_id(self)
         delete = self.request.get('delete')
-        if post.author == user_id and delete:
+
+        if not user_id:
+            self.redirect('/login')
+        elif post.author == user_id and delete:
             post.delete()
             time.sleep(0.25)
-        self.redirect('/')
+        else:
+            self.redirect('/')
 
 
 class CommentDelete(Handler):
 
     def get(self, comment_id):
         user_id = get_user_id(self)
-        if not user_id:
-            self.redirect('/login')
-
         key = db.Key.from_path(
             'Comment',
             int(comment_id),
@@ -428,10 +435,13 @@ class CommentDelete(Handler):
         comment = db.get(key)
         blog_id = comment.blog_id
 
-        if user_id == comment.author:
+        if not user_id:
+            self.redirect('/login')
+        elif user_id == comment.author:
             comment.delete()
             time.sleep(0.25)
-        self.redirect('/blog/%s' % blog_id)
+        else:
+            self.redirect('/blog/%s' % blog_id)
 
 
 class CommentEdit(Handler):
@@ -472,13 +482,15 @@ class CommentEdit(Handler):
         comment = db.get(key)
         content = self.request.get("content")
 
-        if user_id == comment.author and content:
+        if not user_id:
+            self.redirect('/login')
+        elif user_id == comment.author and content:
             comment.content = content
             comment.put()
             time.sleep(0.25)
-        self.redirect('/blog/%s' % comment.blog_id)
+        else:
+            self.redirect('/blog/%s' % comment.blog_id)
 
-        # self.redirect('/blog/%s' % blog_id)
 
 # Home page which shows all blogs
 
@@ -495,12 +507,12 @@ class HomePageHandler(Handler):
         user_id = get_user_id(self)
         posts = Blog.all().order('-created')
         like = self.request.get('like')
+        post_id = self.request.get('post_id')
+        key = db.Key.from_path('Blog', int(post_id), parent=blog_key())
+        post = db.get(key)
 
         # make sure valid user logged in
-        if user_id and like:
-            post_id = self.request.get('post_id')
-            key = db.Key.from_path('Blog', int(post_id), parent=blog_key())
-            post = db.get(key)
+        if user_id and like and user_id != post.author:
             post.like_count += int(like)
             post.liked.append(user_id)
             post.put()
