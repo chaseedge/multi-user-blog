@@ -15,6 +15,7 @@ template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir),
                                autoescape=True)
 
+
 def render_str(template, **params):
     t = jinja_env.get_template(template)
     return t.render(params)
@@ -355,9 +356,11 @@ class PostPage(Handler):
 class EditPost(Handler):
 
     def get(self, post_id):
+        user_id = get_user_id(self)
+        if not user_id:
+            self.redirect('/login')
         key = db.Key.from_path('Blog', int(post_id), parent=blog_key())
         post = db.get(key)
-        user_id = get_user_id(self)
 
         # make sure logged in user is the author
         if post.author == user_id:
@@ -385,9 +388,11 @@ class EditPost(Handler):
 class DeletePost(Handler):
 
     def get(self, post_id):
+        user_id = get_user_id(self)
+        if not user_id:
+            self.redirect('/login')
         key = db.Key.from_path('Blog', int(post_id), parent=blog_key())
         post = db.get(key)
-        user_id = get_user_id(self)
 
         # make sure logged in user is the author
         if post.author == user_id:
@@ -413,6 +418,9 @@ class CommentDelete(Handler):
 
     def get(self, comment_id):
         user_id = get_user_id(self)
+        if not user_id:
+            self.redirect('/login')
+
         key = db.Key.from_path(
             'Comment',
             int(comment_id),
@@ -430,6 +438,9 @@ class CommentEdit(Handler):
 
     def get(self, comment_id):
         user_id = get_user_id(self)
+        if not user_id:
+            self.redirect('/login')
+
         key = db.Key.from_path(
             'Comment',
             int(comment_id),
