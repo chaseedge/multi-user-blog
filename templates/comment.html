@@ -9,6 +9,6 @@
         {% endif %}
     </div>
     <div class="comment-content">
-        {{comment.content | safe}}
+        {{comment._render_text | safe}}
     </div>
 </div>
