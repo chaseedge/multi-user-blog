@@ -4,7 +4,7 @@
         <span class="post-author"> - {{post.author | upper}} </span>
         <span class="like-count">Likes {{post.like_count}}</span>
 
-        {% if user_id and not user_id in post.liked and user_id != post.author%}
+        {% if user_id and not user_id in post.liked %}
             <form class="likes" method="post">
                 <input type="text" hidden='true' name='post_id' value={{post.key().id()}}>
                 <button name="like" type="submit" value=1><i class="fa fa-thumbs-up fa-md" aria-hidden="true"></i></button>

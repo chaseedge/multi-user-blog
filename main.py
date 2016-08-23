@@ -273,6 +273,7 @@ class NewPostHandler(Handler):
                 subject=subject,
                 content=content,
                 author=author)
+            b.liked.append(user_id)    
             b.put()
             self.redirect('/blog/%s' % str(b.key().id()))
         else:
@@ -314,7 +315,7 @@ class PostPage(Handler):
         liked = post.liked
 
         if user_id:
-            if likes and not (user_id in liked) and user_id != post.author:
+            if likes and not (user_id in liked):
                 post.like_count = int(likes) + post.like_count
                 post.liked.append(user_id)
                 post.put()
@@ -352,8 +353,7 @@ class PostPage(Handler):
                     error=error)
 
         else:
-            error = "Please login first"
-            self.render('login.html', error=error)
+            self.redirect('/')
 
 
 class EditPost(Handler):
@@ -406,7 +406,7 @@ class DeletePost(Handler):
             self.render('delete.html', post=post, user_id=user_id)
         else:
             self.redirect(
-                '/login?username=%s&wrong_id=%s' %
+                '/login?username=%s' %
                 (post.author))
 
     def post(self, post_id):
@@ -415,11 +415,13 @@ class DeletePost(Handler):
         user_id = get_user_id(self)
         delete = self.request.get('delete')
 
+
         if not user_id:
             self.redirect('/login')
-        elif post.author == user_id and delete:
+        elif post.author == user_id and delete == "True":
             post.delete()
             time.sleep(0.25)
+            self.redirect('/')
         else:
             self.redirect('/')
 
@@ -440,8 +442,9 @@ class CommentDelete(Handler):
         elif user_id == comment.author:
             comment.delete()
             time.sleep(0.25)
-        else:
             self.redirect('/blog/%s' % blog_id)
+        else:
+            self.redirect('/login')
 
 
 class CommentEdit(Handler):
@@ -488,9 +491,9 @@ class CommentEdit(Handler):
             comment.content = content
             comment.put()
             time.sleep(0.25)
-        else:
             self.redirect('/blog/%s' % comment.blog_id)
-
+        else:
+            self.redirect('/login')
 
 # Home page which shows all blogs
 
@@ -512,7 +515,7 @@ class HomePageHandler(Handler):
         post = db.get(key)
 
         # make sure valid user logged in
-        if user_id and like and user_id != post.author:
+        if user_id and like and not (user_id in post.liked):
             post.like_count += int(like)
             post.liked.append(user_id)
             post.put()
